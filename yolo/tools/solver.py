@@ -99,7 +99,7 @@ class TrainModel(ValidateModel):
             rank_zero_only=True,
         )
         self.log_dict(lr_dict, prog_bar=False, logger=True, on_epoch=False, rank_zero_only=True)
-        return loss * batch_size
+        return loss * batch_size * self.trainer.world_size
 
     def configure_optimizers(self):
         optimizer = create_optimizer(self.model, self.cfg.task.optimizer)

@@ -3,7 +3,9 @@ from typing import List
 import numpy as np
 import torch
 from PIL import Image
+from torchvision import tv_tensors
 from torchvision.transforms import functional as TF
+from torchvision.transforms import v2
 
 
 class AugmentationComposer:
@@ -25,6 +27,67 @@ class AugmentationComposer:
         image, boxes, rev_tensor = self.pad_resize(image, boxes)
         image = TF.to_tensor(image)
         return image, boxes, rev_tensor
+
+
+class HSVAugment:
+    """Randomly adjusts hue, saturation, and value/brightness of the image using torchvision."""
+
+    def __init__(self, prob=1.0, hgain=0.015, sgain=0.7, vgain=0.4):
+        self.prob = prob
+        self.hgain = hgain
+        self.sgain = sgain
+        self.vgain = vgain
+
+    def __call__(self, image, boxes):
+        if torch.rand(1) >= self.prob:
+            return image, boxes
+
+        hue_factor = (torch.rand(1).item() * 2 - 1) * self.hgain
+        sat_factor = 1 + (torch.rand(1).item() * 2 - 1) * self.sgain
+        val_factor = 1 + (torch.rand(1).item() * 2 - 1) * self.vgain
+
+        image = TF.adjust_hue(image, hue_factor)
+        image = TF.adjust_saturation(image, sat_factor)
+        image = TF.adjust_brightness(image, val_factor)
+
+        return image, boxes
+
+
+class RandomAffine:
+    """Applies random affine transformation to the image and boxes using torchvision v2."""
+
+    def __init__(self, prob=1.0, translate=0.1, scale=0.9, degrees=0.0, shear=0.0):
+        self.prob = prob
+        self.transform = v2.RandomAffine(
+            degrees=degrees,
+            translate=(translate, translate),
+            scale=(1 - scale, 1 + scale),
+            shear=shear,
+            fill=114,
+        )
+
+    def __call__(self, image, boxes):
+        if torch.rand(1) >= self.prob:
+            return image, boxes
+
+        w, h = image.size
+
+        # Convert normalized boxes to pixel-coord tv_tensors for v2 transform
+        pixel_boxes = boxes[:, 1:].clone()
+        pixel_boxes[:, [0, 2]] *= w
+        pixel_boxes[:, [1, 3]] *= h
+        tv_boxes = tv_tensors.BoundingBoxes(pixel_boxes, format="XYXY", canvas_size=(h, w))
+
+        image, tv_boxes = self.transform(image, tv_boxes)
+
+        # Convert back to normalized coords
+        boxes = boxes.clone()
+        boxes[:, 1] = tv_boxes[:, 0] / w
+        boxes[:, 2] = tv_boxes[:, 1] / h
+        boxes[:, 3] = tv_boxes[:, 2] / w
+        boxes[:, 4] = tv_boxes[:, 3] / h
+
+        return image, boxes
 
 
 class RemoveOutliers:

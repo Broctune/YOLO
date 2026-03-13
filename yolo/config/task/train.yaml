@@ -15,7 +15,9 @@ data:
   data_augment:
     Mosaic: 1
     # MixUp: 1
-    # HorizontalFlip: 0.5
+    HorizontalFlip: 0.5
+    RandomAffine: 1
+    HSVAugment: 1
     RandomCrop: 1
     RemoveOutliers: 1e-8
 

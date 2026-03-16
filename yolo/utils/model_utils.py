@@ -55,7 +55,6 @@ class EMA(Callback):
 
     def setup(self, trainer, pl_module, stage):
         pl_module.ema = deepcopy(pl_module.model)
-        self.tau /= trainer.world_size
         for param in pl_module.ema.parameters():
             param.requires_grad = False
 

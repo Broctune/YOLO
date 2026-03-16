@@ -34,22 +34,12 @@ class HSVAugment:
 
     def __init__(self, prob=1.0, hgain=0.015, sgain=0.7, vgain=0.4):
         self.prob = prob
-        self.hgain = hgain
-        self.sgain = sgain
-        self.vgain = vgain
+        self.transform = v2.ColorJitter(brightness=vgain, saturation=sgain, hue=hgain)
 
     def __call__(self, image, boxes):
         if torch.rand(1) >= self.prob:
             return image, boxes
-
-        hue_factor = (torch.rand(1).item() * 2 - 1) * self.hgain
-        sat_factor = 1 + (torch.rand(1).item() * 2 - 1) * self.sgain
-        val_factor = 1 + (torch.rand(1).item() * 2 - 1) * self.vgain
-
-        image = TF.adjust_hue(image, hue_factor)
-        image = TF.adjust_saturation(image, sat_factor)
-        image = TF.adjust_brightness(image, val_factor)
-
+        image = TF.to_pil_image(self.transform(TF.to_tensor(image)))
         return image, boxes
 
 

@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:apple.github.io)",
+      "Bash(xargs grep:*)",
+      "Bash(find /Users/davidsjolin/GitHub/YOLO/yolo -type f -name *.yaml)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:machinethink.net)",
+      "WebFetch(domain:betterprogramming.pub)"
+    ]
+  }
+}

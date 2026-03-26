@@ -9,6 +9,7 @@ sys.path.append(str(project_root))
 
 from yolo.config.config import Config
 from yolo.tools.solver import InferenceModel, TrainModel, ValidateModel
+from yolo.utils.deploy_utils import export_coreml
 from yolo.utils.logging_utils import setup
 
 
@@ -41,6 +42,19 @@ def main(cfg: Config):
     if cfg.task.task == "inference":
         model = InferenceModel(cfg)
         trainer.predict(model)
+    if cfg.task.task == "export":
+        export_coreml(
+            model_cfg=cfg.model,
+            weight_path=cfg.weight,
+            class_num=cfg.dataset.class_num,
+            image_size=tuple(cfg.task.image_size),
+            output_path=cfg.task.output_path,
+            class_list=cfg.dataset.class_list,
+            pipeline=cfg.task.pipeline,
+            iou_threshold=cfg.task.iou_threshold,
+            confidence_threshold=cfg.task.confidence_threshold,
+        )
+        return
 
 
 if __name__ == "__main__":

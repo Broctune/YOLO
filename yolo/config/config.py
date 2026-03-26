@@ -111,11 +111,22 @@ class NMSConfig:
 
 
 @dataclass
+class ExportConfig:
+    task: str
+    format: str
+    image_size: List[int]
+    output_path: Optional[str]
+    pipeline: bool = True
+    iou_threshold: float = 0.45
+    confidence_threshold: float = 0.25
+
+
+@dataclass
 class InferenceConfig:
     task: str
     nms: NMSConfig
     data: DataConfig
-    fast_inference: Optional[None]
+    fast_inference: Optional[str]
     save_predict: bool
 
 
@@ -140,7 +151,7 @@ class TrainConfig:
 
 @dataclass
 class Config:
-    task: Union[TrainConfig, InferenceConfig, ValidationConfig]
+    task: Union[TrainConfig, InferenceConfig, ValidationConfig, ExportConfig]
     dataset: DatasetConfig
     model: ModelConfig
     name: str

@@ -1,0 +1,9 @@
+task: export
+
+format: coreml  # Currently supported: coreml
+output_path:    # Path for exported model. Defaults to {model_name}.mlpackage
+image_size: ${image_size}
+
+pipeline: true
+iou_threshold: 0.45
+confidence_threshold: 0.25

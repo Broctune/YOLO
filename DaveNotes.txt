@@ -1,0 +1,31 @@
+This is where I put notes, reminders, how-tos, etc
+
+TO DO
+- Disconnect from ORIGIN and add to own source control. Keep link for future updates?
+
+⏺ The error is in the anc2vec conversion within the Detection head. Let me look at what that module does.
+  Searched for 1 pattern (ctrl+o to expand)
+⏺ The issue is the rearrange call from einops — it uses dynamic shape ops (int() casts) that coremltools can't convert. Let me look at what it does and create a workaround in
+  the wrapper.
+⏺ The einops.rearrange in Anchor2Vec generates int() casts that coremltools can't convert. I need to replace it with standard PyTorch ops during export. Let me update the
+  wrapper to handle this.
+  ...
+  The issue is that even C // 4 creates dynamic int ops in the trace. I need to hardcode the known reg_max value as a constant. Let me fix the patch.
+
+- create best practices doc for converting models to .mlpackage using coremltools. Reference in CLAUDE.md
+
+---------------------------
+HOW TOs
+
+- Export .pt model as .mlpackage artifact for easy integration into mobile app:
+python yolo/lazy.py task=export model=v9-c task.output_path=weights/v9-c-ios.mlpackage
+
+
+---------------------------
+What I've done here so far
+- Updated system uv tool from 0.9.25 -> 0.11.1 using homebrew: brew upgrade uv
+- Updated the pyproject.toml file to use Python v3.13 (from 3.6) and the requirements-dev.txt file which I updated to include files from requirements.txt.
+- Created the virtual environment, installed Python and installed dependencies using: uv sync
+- Claude: /init
+- Initial use of "yolo" terminal command which I configured with an api key for a WandB account I just created from dave@siftr.com. Info in LastPass.
+

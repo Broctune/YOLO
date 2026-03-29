@@ -9,7 +9,11 @@
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:machinethink.net)",
       "WebFetch(domain:betterprogramming.pub)",
-      "Bash(grep -E \"\\\\.py$\")"
+      "Bash(grep -E \"\\\\.py$\")",
+      "Bash(find /Users/davidsjolin/GitHub/YOLO -type f \\\\\\(-name *.sh -o -name Makefile \\\\\\))",
+      "Bash(find /Users/davidsjolin/GitHub/YOLO -type f \\\\\\(-name *.ipynb -o -name *.md \\\\\\))",
+      "Bash(find /Users/davidsjolin/GitHub/YOLO/runs/train/v9t-sku110k -type f -name *.yaml -o -name config.yaml)",
+      "Bash(find /Users/davidsjolin/GitHub/YOLO -type f \\\\\\(-name .env* -o -name wandb.env -o -name *.env \\\\\\))"
     ]
   }
 }

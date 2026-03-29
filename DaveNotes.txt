@@ -23,13 +23,63 @@ python yolo/lazy.py task=export model=weights/sku-110-best 'task.image_size=[384
 python yolo/lazy.py task=train dataset=sku110k model=v9-t task.epoch=10 task.data.batch_size=8 task.data.cpu_num=8 accelerator=mps device=1 weight=True name=v9t-sku110k use_wandb=False 2>&1
 
  - Resume model training for more epochs:
- python yolo/lazy.py task=train dataset=sku110k model=v9-t task.epoch=50 task.data.batch_size=8 task.data.cpu_num=8 accelerator=mps device=1 weight=True name=v9t-sku110k use_wandb=False '+resume="runs/train/v9t-sku110k/checkpoints/epoch=9-step=2371.ckpt"' 
- -For future resumes after this run, you'd use last.ckpt instead:                                                                                                               
-                                                                                            
-  '+resume="runs/train/v9t-sku110k/checkpoints/last.ckpt"' 
+ulimit -n 4096 && python yolo/lazy.py task=train dataset=sku110k model=v9-t task.epoch=70 task.data.batch_size=8 task.data.cpu_num=8 accelerator=mps device=1 weight=True name=v9t-sku110k use_wandb=True '+resume="runs/train/v9t-sku110k/checkpoints/last.ckpt"'  
 
-  ulimit -n 4096 && python yolo/lazy.py task=train dataset=sku110k model=v9-t task.epoch=50 task.data.batch_size=8 task.data.cpu_num=8 accelerator=mps device=1 weight=True name=v9t-sku110k use_wandb=True '+resume="runs/train/v9t-sku110k/checkpoints/epoch=9-step=2371.ckpt"'  
+Training Metrics (shown per batch)
 
+  ┌─────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │     Metric      │                                                                            What it means                                                                             │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ BCELoss         │ Binary Cross-Entropy Loss -- measures how well the model classifies "is this a product or background?" Lower = better classification.                                │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ BoxLoss         │ Bounding box regression loss -- measures how accurately predicted boxes match ground truth boxes. Lower = tighter boxes.                                             │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ DFLoss          │ Distribution Focal Loss -- refines box coordinate predictions by learning a distribution over possible positions rather than a single point. Lower = more precise    │
+  │                 │ localization.                                                                                                                                                        │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ LR/0, LR/1,     │ Learning rates for the 3 parameter groups (bias, conv weights, norm weights). These ramp up during warmup (first 3 epochs) then decay linearly.                      │
+  │ LR/2            │                                                                                                                                                                      │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ momentum/0-2    │ SGD momentum values per parameter group. Transitions from 0.937 to 0.8 during warmup.                                                                                │
+  └─────────────────┴──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  Validation Metrics (shown per epoch in the table)
+
+  These follow the COCO evaluation protocol:
+
+  ┌────────────────────────┬───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │         Metric         │                                                                         What it means                                                                         │
+  ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ AP @ .5:.95            │ Primary metric. Mean Average Precision averaged over IoU thresholds from 0.50 to 0.95 (step 0.05). This is the strictest measure -- it requires boxes to be   │
+  │                        │ very accurate.                                                                                                                                                │
+  ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ AP @ .5                │ AP at IoU=0.50 (more lenient). A predicted box is "correct" if it overlaps 50%+ with ground truth. Good for "did we find the object?"                         │
+  ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ AP @ .75               │ AP at IoU=0.75 (stricter). Requires 75% overlap -- tests localization precision.                                                                              │
+  ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ AP                     │ AP broken down by object size. SKU-110K has mostly small/medium products on shelves, so these tell you if the model struggles with certain sizes.             │
+  │ (small/medium/large)   │                                                                                                                                                               │
+  ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ AR maxDets 1           │ Average Recall with at most 1 detection per image. Low by design for dense scenes like retail shelves.                                                        │
+  ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ AR maxDets 10          │ Average Recall with up to 10 detections. Still limited for SKU-110K which can have 50+ products per image.                                                    │
+  ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ AR maxDets 100         │ Average Recall with up to 100 detections. Most relevant for SKU-110K since images contain many products.                                                      │
+  ├────────────────────────┼───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ AR                     │ Recall broken down by object size, same size categories as AP.                                                                                                │
+  │ (small/medium/large)   │                                                                                                                                                               │
+  └────────────────────────┴───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+  What to watch for
+
+  - Loss values decreasing over epochs = model is learning
+  - AP @ .5 increasing = model is finding products (even if boxes aren't perfect)
+  - AP @ .5:.95 increasing = model is both finding products AND localizing them precisely
+  - AR maxDets 100 should climb as the model learns to detect all the products in dense shelf images
+  - The -100 values you saw in epoch 0 for "large" objects just means there are no large objects in the evaluation set to score against
+
+  With only 10 epochs and fine-tuning, expect modest AP values -- this is mainly validating the pipeline works. A real training run of 100+ epochs would be needed for production-quality
+  results.
 ---------------------------
 What I've done here so far
 - Updated system uv tool from 0.9.25 -> 0.11.1 using homebrew: brew upgrade uv

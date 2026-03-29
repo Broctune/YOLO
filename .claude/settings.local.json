@@ -8,7 +8,8 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:machinethink.net)",
-      "WebFetch(domain:betterprogramming.pub)"
+      "WebFetch(domain:betterprogramming.pub)",
+      "Bash(grep -E \"\\\\.py$\")"
     ]
   }
 }

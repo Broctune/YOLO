@@ -166,8 +166,12 @@ class YoloDataset(Dataset):
     def get_data(self, idx):
         img_path, bboxes = self.img_paths[idx], self.bboxes[idx]
         valid_mask = bboxes[:, 0] != -1
-        with Image.open(img_path) as img:
-            img = img.convert("RGB")
+        try:
+            with Image.open(img_path) as img:
+                img = img.convert("RGB")
+        except OSError:
+            logger.warning(f"Skipping corrupt image: {img_path}")
+            return self.get_data((idx + 1) % len(self))
         return img, torch.from_numpy(bboxes[valid_mask]), img_path
 
     def get_more_data(self, num: int = 1):

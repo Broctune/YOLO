@@ -21,7 +21,7 @@ import numpy as np
 import torch
 import wandb
 from lightning import LightningModule, Trainer, seed_everything
-from lightning.pytorch.callbacks import Callback, RichModelSummary, RichProgressBar
+from lightning.pytorch.callbacks import Callback, ModelCheckpoint, RichModelSummary, RichProgressBar
 from lightning.pytorch.callbacks.progress.rich_progress import CustomProgress
 from lightning.pytorch.loggers import TensorBoardLogger, WandbLogger
 from lightning.pytorch.utilities import rank_zero_only
@@ -106,7 +106,7 @@ class YOLORichProgressBar(RichProgressBar):
         epoch_descript = "[cyan]Train [white]|"
         batch_descript = "[green]Batch [white]|"
         metrics = self.get_metrics(trainer, pl_module)
-        metrics.pop("v_num")
+        metrics.pop("v_num", None)
         for metrics_name, metrics_val in metrics.items():
             if "Loss_step" in metrics_name:
                 epoch_descript += f"{metrics_name.removesuffix('_step').split('/')[1]: ^9}|"
@@ -284,6 +284,18 @@ def setup(cfg: Config):
     progress.append(YOLORichProgressBar())
     progress.append(YOLORichModelSummary())
     progress.append(ImageLogger())
+    if cfg.task.task == "train":
+        progress.append(
+            ModelCheckpoint(
+                dirpath=save_path / "checkpoints",
+                save_top_k=3,
+                monitor="map_50",
+                mode="max",
+                filename="epoch={epoch}-map50={map_50:.4f}",
+                auto_insert_metric_name=False,
+                save_last=True,
+            )
+        )
     if cfg.use_tensorboard:
         loggers.append(TensorBoardLogger(log_graph="all", save_dir=save_path))
     if cfg.use_wandb:

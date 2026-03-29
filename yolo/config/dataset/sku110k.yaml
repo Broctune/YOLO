@@ -1,0 +1,6 @@
+path: ../yolo-finetune/datasets/SKU-110K
+train: train
+validation: val
+
+class_num: 1
+class_list: ['Product']

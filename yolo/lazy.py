@@ -1,6 +1,7 @@
 import sys
 from pathlib import Path
 
+import torch
 import hydra
 from lightning import Trainer
 
@@ -17,13 +18,17 @@ from yolo.utils.logging_utils import setup
 def main(cfg: Config):
     callbacks, loggers, save_path = setup(cfg)
 
+    accelerator = getattr(cfg, "accelerator", "auto")
+    use_mps = accelerator == "mps" or (accelerator == "auto" and torch.backends.mps.is_available())
+    precision = "32-true" if use_mps else "16-mixed"
+
     trainer = Trainer(
-        accelerator=getattr(cfg, "accelerator", "auto"),
+        accelerator=accelerator,
         devices=cfg.device,
         max_epochs=getattr(cfg.task, "epoch", None),
-        precision="16-mixed",
+        precision=precision,
         callbacks=callbacks,
-        sync_batchnorm=True,
+        sync_batchnorm=not use_mps,
         logger=loggers,
         log_every_n_steps=1,
         gradient_clip_val=10,
@@ -35,7 +40,7 @@ def main(cfg: Config):
 
     if cfg.task.task == "train":
         model = TrainModel(cfg)
-        trainer.fit(model)
+        trainer.fit(model, ckpt_path=getattr(cfg, "resume", None))
     if cfg.task.task == "validation":
         model = ValidateModel(cfg)
         trainer.validate(model)

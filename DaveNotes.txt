@@ -13,6 +13,9 @@ TO DO
 ---------------------------
 HOW TOs
 
+- SSH into training computer
+ssh -i ~/Documents/Siftr/siftr-ec2-keypair.pem -o StrictHostKeyChecking=accept-new ubuntu@34.218.58.131 "nvidia-smi --query-gpu=name,memory.total --format=csv,noheader && echo 'SSH OK'"
+
 - Export .pt model as .mlpackage artifact for easy integration into mobile app:
 python yolo/lazy.py task=export model=v9-c task.output_path=weights/v9-c-ios.mlpackage
 python yolo/lazy.py task=export model=v9-c task.image_size=[384,640] task.output_path=weights/v9-c-ios-384x640.mlpackage   

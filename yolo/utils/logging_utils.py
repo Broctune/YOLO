@@ -237,6 +237,21 @@ class ImageLogger(Callback):
                 logger.log_image("Prediction", images, step=step, boxes=[log_bbox(pred_boxes)])
 
 
+class WandbCheckpointCallback(Callback):
+    """Saves the W&B run ID and training config into checkpoints for resume detection."""
+
+    def __init__(self, wandb_config: dict):
+        super().__init__()
+        self.wandb_config = wandb_config
+
+    def on_save_checkpoint(self, trainer: Trainer, pl_module, checkpoint) -> None:
+        checkpoint["wandb_config"] = self.wandb_config
+        for tl in trainer.loggers:
+            if isinstance(tl, WandbLogger) and tl.experiment:
+                checkpoint["wandb_run_id"] = tl.experiment.id
+                return
+
+
 def setup_logger(logger_name, quiet=False):
     class EmojiFormatter(logging.Formatter):
         def format(self, record, emoji=":high_voltage:"):
@@ -288,19 +303,59 @@ def setup(cfg: Config):
         progress.append(
             ModelCheckpoint(
                 dirpath=save_path / "checkpoints",
-                save_top_k=3,
+                save_top_k=5,
                 monitor="map_50",
                 mode="max",
                 filename="epoch={epoch}-map50={map_50:.4f}",
                 auto_insert_metric_name=False,
+                every_n_epochs=1,
+                save_on_train_epoch_end=False,
+            )
+        )
+        progress.append(
+            ModelCheckpoint(
+                dirpath=save_path / "checkpoints",
+                save_top_k=0,
                 save_last=True,
+                every_n_epochs=1,
+                save_on_train_epoch_end=False,
+                enable_version_counter=False,
             )
         )
     if cfg.use_tensorboard:
         loggers.append(TensorBoardLogger(log_graph="all", save_dir=save_path))
     if cfg.use_wandb:
         wandb_cfg = OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True)
-        loggers.append(WandbLogger(project="YOLO", name=cfg.name, save_dir=save_path, id=None, config=wandb_cfg))
+        wandb_resume_keys = {
+            "model": cfg.model.name,
+            "dataset": cfg.dataset.path,
+            "batch_size": cfg.task.data.batch_size,
+            "optimizer": cfg.task.optimizer.type,
+            "lr": cfg.task.optimizer.args.lr,
+        }
+        wandb_id = None
+        resume_path = getattr(cfg, "resume", None)
+        if resume_path and Path(resume_path).exists():
+            ckpt = torch.load(resume_path, map_location="cpu", weights_only=False)
+            saved_id = ckpt.get("wandb_run_id")
+            saved_config = ckpt.get("wandb_config")
+            del ckpt
+            if saved_id and saved_config == wandb_resume_keys:
+                wandb_id = saved_id
+                logger.info(f":globe_with_meridians: Resuming W&B run [bold]{wandb_id}[/]")
+            elif saved_id:
+                logger.info(":globe_with_meridians: Training config changed — starting new W&B run")
+        loggers.append(
+            WandbLogger(
+                project="YOLO",
+                name=cfg.name,
+                save_dir=save_path,
+                id=wandb_id,
+                resume="allow" if wandb_id else "never",
+                config=wandb_cfg,
+            )
+        )
+        progress.append(WandbCheckpointCallback(wandb_resume_keys))
 
     return progress, loggers, save_path
 

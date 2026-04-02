@@ -76,6 +76,27 @@ pre-commit run --all-files
 
 Session-scoped fixtures in `tests/conftest.py` provide pre-configured objects (configs, models, dataloaders, trainers). Tests use the `mock` dataset by default.
 
+## Training Notes
+
+### Known Issues & Required Fixes
+- **`last.ckpt` requires separate callback** — In Lightning 2.6.1, `save_last=True` on a monitored `ModelCheckpoint` only saves `last.ckpt` when a top-k save also occurs (see `on_validation_end` in Lightning source: `_last_global_step_saved == trainer.global_step` gate). Fixed by splitting into two callbacks in `logging_utils.py:288`: one for top-k monitoring, one dedicated to `save_last` with `save_top_k=0`.
+- **W&B run resumption** — `WandbCheckpointCallback` in `logging_utils.py` saves the W&B run ID and key training params (model, dataset, batch_size, optimizer, lr) into each checkpoint. On resume, if the saved config matches the current config, the same W&B run is continued via `resume="allow"`. If config changed (e.g., different batch_size), a new W&B run is created automatically. First checkpoint after this feature was added must be saved before resume works.
+
+### Hydra Config Gotchas
+- `cpu_num` in `general.yaml` is the global default (16). The validation loader uses `${cpu_num}` from this global. Overriding `task.data.cpu_num=N` on the CLI only affects the train loader — use `cpu_num=N` (global) to set both.
+- `task.epoch` sets Lightning's `max_epochs` — this is the absolute epoch ceiling, not "train N more epochs from checkpoint."
+- `equivalent_batch_size` (default 64) in `train.yaml` controls gradient accumulation. Changing `batch_size` adjusts accumulation steps automatically, keeping the effective optimizer batch size constant.
+
+### AWS EC2 Training (A10G instance `i-042bf1039aebb7510`)
+- Instance has only 15 GB system RAM and a 39 GB root disk. Keep `batch_size` at 16 and `cpu_num` at 4 to avoid OOM kills.
+- Add swap on the NVMe ephemeral drive before training: `sudo fallocate -l 8G /opt/dlami/nvme/swapfile && sudo chmod 600 /opt/dlami/nvme/swapfile && sudo mkswap /opt/dlami/nvme/swapfile && sudo swapon /opt/dlami/nvme/swapfile`
+- Copy datasets to `/opt/dlami/nvme/` for faster I/O (NVMe vs EBS).
+- The uv/pip cache can fill the root disk — run `uv cache clean && pip cache purge` periodically.
+
+### Local Training (M4 Max, 128 GB)
+- Use `accelerator=mps`, `batch_size=16`, `cpu_num=8`. Plenty of memory headroom.
+- MPS forces `precision=32-true` (no mixed precision) and disables `sync_batchnorm` — handled automatically in `lazy.py`.
+
 ## Commit Style
 
 This project uses [gitmoji](https://gitmoji.dev/) prefixes in commit messages.

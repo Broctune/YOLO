@@ -70,6 +70,8 @@ class EMA(Callback):
         self.batch_step_counter += 1
         if self.batch_step_counter % trainer.accumulate_grad_batches:
             return
+        if self.ema_state_dict is None:
+            self.ema_state_dict = deepcopy(pl_module.model.state_dict())
         self.step += 1
         decay_factor = self.decay * (1 - exp(-self.step / self.tau))
         for key, param in pl_module.model.state_dict().items():

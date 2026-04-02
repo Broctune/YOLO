@@ -13,6 +13,10 @@ TO DO
 ---------------------------
 HOW TOs
 
+python yolo/lazy.py task=train dataset=sku110k dataset.path=/home/ubuntu/datasets/SKU-110K model=v9-t task.epoch=100 task.data.batch_size=32 task.data.cpu_num=4 accelerator=gpu device=1 weight=True name=v9t-sku110k-aws use_wandb=True '+resume="runs/train/v9t-sku110k/checkpoints/last.ckpt"'
+
+python yolo/lazy.py task=train dataset=sku110k dataset.path=/home/ubuntu/datasets/SKU-110K model=v9-t task.epoch=100 task.data.batch_size=32 task.data.cpu_num=4 accelerator=gpu device=1 weight=True name=v9t-sku110k-aws use_wandb=True '+resume="runs/train/v9t-sku110k-aws/checkpoints/last.ckpt"' 
+
 - SSH into training computer
 ssh -i ~/Documents/Siftr/siftr-ec2-keypair.pem -o StrictHostKeyChecking=accept-new ubuntu@34.218.58.131 "nvidia-smi --query-gpu=name,memory.total --format=csv,noheader && echo 'SSH OK'"
 
@@ -24,9 +28,13 @@ python yolo/lazy.py task=export model=weights/sku-110-best 'task.image_size=[384
 
 - Train on SKU-110K dataset from smallest v9 model.
 python yolo/lazy.py task=train dataset=sku110k model=v9-t task.epoch=10 task.data.batch_size=8 task.data.cpu_num=8 accelerator=mps device=1 weight=True name=v9t-sku110k use_wandb=False 2>&1
+- AWS EC2 Training from checkpoint and data on NVMe
+python yolo/lazy.py task=train dataset=sku110k dataset.path=/opt/dlami/nvme/SKU-110K model=v9-t task.epoch=200 task.data.batch_size=16 cpu_num=4 accelerator=gpu device=1 weight=True name=v9t-sku110k-aws use_wandb=True '+resume="runs/train/v9t-sku110k-aws/checkpoints/epoch=45-map50=0.1467.ckpt"'  
+   
+    'epoch=45-map50=0.1467.ckpt'
 
  - Resume model training for more epochs:
-ulimit -n 4096 && python yolo/lazy.py task=train dataset=sku110k model=v9-t task.epoch=70 task.data.batch_size=8 task.data.cpu_num=8 accelerator=mps device=1 weight=True name=v9t-sku110k use_wandb=True '+resume="runs/train/v9t-sku110k/checkpoints/last.ckpt"'  
+ulimit -n 4096 && python yolo/lazy.py task=train dataset=sku110k model=v9-t task.epoch=100 task.data.batch_size=16 task.data.cpu_num=8 accelerator=mps device=1 weight=True name=v9t-sku110k use_wandb=True '+resume="runs/train/v9t-sku110k/checkpoints/last.ckpt"'
 
 Training Metrics (shown per batch)
 
